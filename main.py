@@ -3,9 +3,12 @@ from pydantic import BaseModel,Field,ConfigDict
 import pandas as pd 
 import numpy as np
 import joblib 
+from pathlib import Path
 
-model=joblib.load(r"C:\Users\dsi\Documents\M17_Project_Pima_Indians_Diabetes\models\model.joblib")
-threshold=joblib.load(r"C:\Users\dsi\Documents\M17_Project_Pima_Indians_Diabetes\models\threshold.joblib")
+BASE_DIR = Path(__file__).resolve().parent
+
+model = joblib.load(BASE_DIR / "models" / "model.joblib")
+threshold = joblib.load(BASE_DIR / "models" / "threshold.joblib")
 
 app=FastAPI()
 
@@ -76,5 +79,3 @@ def integrate_BMI(data,BMI):
 def create_df(features):
     df=pd.DataFrame([features])
     return df
-
-print(threshold)
