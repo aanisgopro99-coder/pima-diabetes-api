@@ -427,3 +427,113 @@ textarea::placeholder { color: #91A293 !important; -webkit-text-fill-color: #91A
 /* Keep chart rendering responsive and avoid heavy transition effects. */
 [data-testid="stPlotlyChart"] { contain: content; }
 @media (prefers-reduced-motion: reduce) { .result-loader { animation: none; } .probability-track span { transition: none; } }
+
+/* Global live clock */
+.live-clock-shell {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 .9rem;
+}
+.live-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .55rem .9rem;
+  border: 1px solid rgba(185,201,178,.18);
+  border-radius: 14px;
+  background: rgba(17,35,25,.72);
+  box-shadow: 0 10px 28px rgba(0,0,0,.13), inset 0 1px 0 rgba(255,255,255,.025);
+  backdrop-filter: blur(14px);
+}
+.clock-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: #A6C794;
+  box-shadow: 0 0 0 5px rgba(145,168,141,.09);
+}
+.clock-time-group, .clock-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+}
+.clock-label {
+  color: #91A293;
+  font-size: .55rem;
+  font-weight: 700;
+  letter-spacing: .16em;
+}
+.clock-time-group strong {
+  color: var(--cream);
+  font: 600 1.05rem/1.1 'DM Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+.clock-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(218,228,214,.16);
+}
+.clock-date {
+  color: #D5DED3;
+  font-size: .68rem;
+  font-weight: 600;
+}
+.clock-zone {
+  color: #91A293;
+  font-size: .57rem;
+  letter-spacing: .1em;
+}
+
+/* Lightweight cursor-following ambient light */
+#pima-cursor-aura {
+  position: fixed;
+  z-index: 999999;
+  top: 0;
+  left: 0;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(145,168,141,.13) 0%, rgba(181,139,99,.055) 38%, transparent 72%);
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  will-change: transform;
+  transition: opacity .2s ease;
+}
+#pima-cursor-aura.is-visible { opacity: 1; }
+
+.activity-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (hover: hover) and (pointer: fine) {
+  .chart-card, .arch-node {
+    transition: transform .22s var(--ease), border-color .22s ease, box-shadow .22s ease;
+  }
+  .chart-card:hover, .arch-node:hover {
+    transform: translateY(-3px);
+    border-color: rgba(185,201,178,.34);
+    box-shadow: 0 18px 38px rgba(0,0,0,.2);
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  #pima-cursor-aura { display: none; }
+}
+@media (max-width: 650px) {
+  .live-clock-shell { justify-content: flex-start; }
+  .live-clock { gap: .6rem; padding: .5rem .7rem; }
+  .clock-date { font-size: .61rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #pima-cursor-aura { display: none; }
+  .chart-card, .arch-node { transition: none; }
+}
+
