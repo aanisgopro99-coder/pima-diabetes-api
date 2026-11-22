@@ -76,7 +76,7 @@ def authenticate() -> None:
     )
     with st.form("login_form"):
         password = st.text_input("Access password", type="password", placeholder="Enter your access password")
-        submitted = st.form_submit_button("Enter workspace", use_container_width=True)
+        submitted = st.form_submit_button("Enter workspace", width="stretch")
     if submitted:
         if password == expected:
             st.session_state.authenticated = True
@@ -211,7 +211,7 @@ def api_status_label() -> tuple[str, str]:
 
 
 def run_health_check(key: str) -> None:
-    if st.button("Wake / check API", key=key, use_container_width=True):
+    if st.button("Wake / check API", key=key, width="stretch"):
         with st.spinner("Contacting the cloud API. Render may need time to wake the serviceâ€¦"):
             try:
                 code, body, elapsed = request_health()
@@ -315,7 +315,7 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
             fig.update_xaxes(range=[0, 112], title="Percentile within the project dataset", ticksuffix="th")
             fig.update_yaxes(autorange="reversed")
             st.markdown('<div class="chart-heading">Input profile against the dataset</div>', unsafe_allow_html=True)
-            st.plotly_chart(style_figure(fig, 340), use_container_width=True, config={"displayModeBar": False, "responsive": True})
+            st.plotly_chart(style_figure(fig, 340), width="stretch", config={"displayModeBar": False, "responsive": True})
             st.caption("Descriptive comparison only. These percentiles are not risk scores, feature contributions or clinical reference ranges.")
 
     with st.expander("Technical request and response"):
@@ -369,7 +369,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             )
             fig.update_layout(showlegend=False, annotations=[{"text": f"{records}<br><span style='font-size:11px'>records</span>", "showarrow": False, "font": {"size": 23, "color": PALETTE["cream"]}}])
             st.markdown('<div class="chart-card"><div class="chart-heading">Class balance</div><div class="chart-subtitle">Distribution in the cleaned project dataset</div>', unsafe_allow_html=True)
-            st.plotly_chart(style_figure(fig, 310), use_container_width=True, config={"displayModeBar": False, "responsive": True})
+            st.plotly_chart(style_figure(fig, 310), width="stretch", config={"displayModeBar": False, "responsive": True})
             st.markdown('</div>', unsafe_allow_html=True)
         with right:
             color_map = {"No diabetes recorded": PALETTE["negative"], "Diabetes recorded": PALETTE["sage_light"]}
@@ -385,7 +385,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             )
             fig.update_traces(marker={"size": 8, "line": {"width": 0}})
             st.markdown('<div class="chart-card"><div class="chart-heading">Glucose Ã— BMI map</div><div class="chart-subtitle">Explore individual dataset records Â· hover for details</div>', unsafe_allow_html=True)
-            st.plotly_chart(style_figure(fig, 310), use_container_width=True, config={"displayModeBar": False, "responsive": True})
+            st.plotly_chart(style_figure(fig, 310), width="stretch", config={"displayModeBar": False, "responsive": True})
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="section-heading"><span>02</span> Explore a feature</div>', unsafe_allow_html=True)
@@ -406,7 +406,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             labels={"Outcome label": "Recorded dataset group"},
         )
         fig.update_layout(xaxis_title=feature, yaxis_title="Records", bargap=0.04)
-        st.plotly_chart(style_figure(fig, 300), use_container_width=True, config={"displayModeBar": False, "responsive": True})
+        st.plotly_chart(style_figure(fig, 300), width="stretch", config={"displayModeBar": False, "responsive": True})
 
     st.markdown('<div class="section-heading"><span>03</span> Recent activity</div>', unsafe_allow_html=True)
     activity_left, activity_right = st.columns([1.2, 1], gap="large")
@@ -422,7 +422,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
     with activity_right:
         st.markdown('<div class="activity-card"><div class="activity-icon">âŒ</div><div><strong>API monitor</strong><p>Health endpoint: GET /health. Prediction endpoint: POST /predict.</p></div></div>', unsafe_allow_html=True)
         run_health_check("dashboard_health_check")
-    if st.button("Open assessment workspace", type="primary", use_container_width=True):
+    if st.button("Open assessment workspace", type="primary", width="stretch"):
         st.session_state.nav_page = "Assessment"
         st.rerun()
 
@@ -478,7 +478,7 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         "pedigree": pedigree,
     }
     result_slot = st.empty()
-    if st.button("Run prediction  â†’", type="primary", use_container_width=True):
+    if st.button("Run prediction  â†’", type="primary", width="stretch"):
         result_slot.markdown(
             '<div class="result-panel result-calm result-loading">'
             '<div class="result-loader" aria-label="Prediction in progress"></div>'
@@ -590,7 +590,7 @@ def page_model_insights(data: pd.DataFrame | None) -> None:
             points="outliers",
             labels={"Outcome label": "Recorded dataset group"},
         )
-        st.plotly_chart(style_figure(fig, 350), use_container_width=True, config={"displayModeBar": False, "responsive": True})
+        st.plotly_chart(style_figure(fig, 350), width="stretch", config={"displayModeBar": False, "responsive": True})
         st.caption("These plots describe the project dataset. They do not establish causation or explain an individual model prediction.")
     st.markdown('<div class="section-heading"><span>02</span> Decision threshold</div>', unsafe_allow_html=True)
     st.markdown(
@@ -613,7 +613,7 @@ def page_model_insights(data: pd.DataFrame | None) -> None:
             {"Form input": "Diabetes pedigree function", "API key": "DiabetesPedigreeFunction", "Purpose": "Model feature"},
         ]),
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -678,7 +678,7 @@ def main() -> None:
         state, tone = api_status_label()
         st.markdown(f'<div class="sidebar-status"><span class="status-dot {tone}"></span><span>API Â· {state}</span></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sidebar-url">{html.escape(API_BASE_URL)}</div>', unsafe_allow_html=True)
-        if st.button("Sign out", use_container_width=True):
+        if st.button("Sign out", width="stretch"):
             st.session_state.authenticated = False
             st.rerun()
 
