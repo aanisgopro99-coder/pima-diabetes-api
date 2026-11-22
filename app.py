@@ -49,7 +49,7 @@ st.set_page_config(
     page_title="Pima | Health Intelligence",
     page_icon="P",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 
@@ -408,6 +408,10 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
         st.json(body)
 
 
+def go_to_assessment() -> None:
+    st.session_state.nav_page = "Assessment"
+
+
 def page_dashboard(data: pd.DataFrame | None) -> None:
     render_hero()
     if data is None:
@@ -515,9 +519,13 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
     with activity_right:
         st.markdown('<div class="activity-card"><div class="activity-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div><strong>API monitor</strong><p>Health endpoint: GET /health. Prediction endpoint: POST /predict.</p></div></div>', unsafe_allow_html=True)
         run_health_check("dashboard_health_check")
-    if st.button("Open assessment workspace", type="primary", width="stretch"):
-        st.session_state.nav_page = "Assessment"
-        st.rerun()
+    st.button(
+        "Open assessment workspace",
+        type="primary",
+        width="stretch",
+        key="open_assessment_workspace",
+        on_click=go_to_assessment,
+    )
 
 
 def page_assessment(data: pd.DataFrame | None) -> None:
