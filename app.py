@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import html
+import math
 import os
 import time
 from datetime import datetime
@@ -152,6 +153,30 @@ def make_payload(values: dict) -> dict:
         "DiabetesPedigreeFunction": float(values["pedigree"]),
     }
 
+
+
+def validate_patient_values(values: dict) -> list[str]:
+    rules = [
+        ("pregnancies", "Pregnancies", lambda value: value.is_integer() and 0 <= value <= 20, "must be an integer from 0 to 20."),
+        ("glucose", "Glucose", lambda value: 0 <= value <= 400, "must be between 0 and 400."),
+        ("blood_pressure", "Blood pressure", lambda value: 0 < value <= 200, "must be greater than 0 and at most 200."),
+        ("skin_thickness", "Skin thickness", lambda value: 0 <= value <= 100, "must be between 0 and 100."),
+        ("insulin", "Insulin", lambda value: 0 <= value <= 1000, "must be between 0 and 1000."),
+        ("age", "Age", lambda value: value.is_integer() and 1 <= value <= 119, "must be an integer from 1 to 119."),
+        ("weight", "Weight", lambda value: 30 < value < 250, "must be greater than 30 and less than 250."),
+        ("height", "Height", lambda value: 60 < value < 250, "must be greater than 60 and less than 250."),
+        ("pedigree", "Diabetes pedigree function", lambda value: 0 <= value <= 3, "must be between 0 and 3."),
+    ]
+    errors = []
+    for key, label, is_valid, message in rules:
+        try:
+            value = float(values[key])
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{label}: enter a valid number.")
+            continue
+        if not math.isfinite(value) or not is_valid(value):
+            errors.append(f"{label}: {message}")
+    return errors
 
 def style_figure(fig, height: int = 330):
     fig.update_layout(
@@ -543,25 +568,43 @@ def page_assessment(data: pd.DataFrame | None) -> None:
     st.caption("Nine request fields are collected. Weight and height are sent to the API, which calculates BMI for the eight-feature model input.")
     c1, c2, c3 = st.columns(3, gap="large")
     with c1:
-        pregnancies = st.number_input("Pregnancies · count", min_value=0, max_value=20, value=0, step=1, help="Number of times pregnant.", key="in_pregnancies")
-        glucose = st.number_input("Glucose · mg/dL", min_value=0.0, max_value=400.0, value=120.0, step=1.0, help="Plasma glucose concentration.", key="in_glucose")
-        blood_pressure = st.number_input("Diastolic blood pressure · mmHg", min_value=1.0, max_value=200.0, value=70.0, step=1.0, help="The API requires a value greater than zero.", key="in_blood_pressure")
+        pregnancies = st.number_input("Pregnancies · count", value=0, step=1, help="Enter an integer from 0 to 20.", key="in_pregnancies")
+        glucose = st.number_input("Glucose · mg/dL", value=120.0, step=1.0, help="Enter a value from 0 to 400 mg/dL.", key="in_glucose")
+        blood_pressure = st.number_input("Diastolic blood pressure · mmHg", value=70.0, step=1.0, help="Enter a value greater than 0 and at most 200 mmHg.", key="in_blood_pressure")
     with c2:
-        skin_thickness = st.number_input("Skin thickness · mm", min_value=0.0, max_value=100.0, value=20.0, step=1.0, help="Triceps skinfold thickness.", key="in_skin_thickness")
-        insulin = st.number_input("Insulin · µU/mL", min_value=0.0, max_value=1000.0, value=80.0, step=1.0, help="Two-hour serum insulin.", key="in_insulin")
-        age = st.number_input("Age · years", min_value=1, max_value=119, value=30, step=1, help="Age in years.", key="in_age")
+        skin_thickness = st.number_input("Skin thickness · mm", value=20.0, step=1.0, help="Enter a value from 0 to 100 mm.", key="in_skin_thickness")
+        insulin = st.number_input("Insulin · µU/mL", value=80.0, step=1.0, help="Enter a value from 0 to 1000 µU/mL.", key="in_insulin")
+        age = st.number_input("Age · years", value=30, step=1, help="Enter an integer from 1 to 119.", key="in_age")
     with c3:
-        weight = st.number_input("Weight · kg", min_value=30.1, max_value=249.9, value=70.0, step=0.5, help="API request field: Waight.", key="in_weight")
-        height = st.number_input("Height · cm", min_value=60.1, max_value=249.9, value=170.0, step=0.5, help="API request field: Hight.", key="in_height")
-        pedigree = st.number_input("Diabetes pedigree function", min_value=0.0, max_value=3.0, value=0.5, step=0.01, help="Family-history-related dataset score.", key="in_pedigree")
+        weight = st.number_input("Weight · kg", value=70.0, step=0.5, help="Enter a value greater than 30 and less than 250 kg. API request field: Waight.", key="in_weight")
+        height = st.number_input("Height · cm", value=170.0, step=0.5, help="Enter a value greater than 60 and less than 250 cm. API request field: Hight.", key="in_height")
+        pedigree = st.number_input("Diabetes pedigree function", value=0.5, step=0.01, help="Enter a value from 0 to 3.", key="in_pedigree")
 
-    bmi = compute_bmi(weight, height)
-    if bmi < 12 or bmi > 60:
-        st.warning("Please double-check the entered height and weight units. The resulting BMI is unusual for this input check; this is not a medical assessment.")
+    try:
+        numeric_weight = float(weight)
+        numeric_height = float(height)
+        bmi = (
+            compute_bmi(numeric_weight, numeric_height)
+            if math.isfinite(numeric_weight) and math.isfinite(numeric_height) and numeric_height > 0
+            else None
+        )
+    except (TypeError, ValueError, ZeroDivisionError):
+        bmi = None
+
+    if bmi is None:
+        st.warning("BMI preview is unavailable until a finite height greater than zero is entered.")
+        bmi_value = "?"
+        bmi_label = "Check height and weight"
+    else:
+        if bmi < 12 or bmi > 60:
+            st.warning("Please double-check the entered height and weight units. The resulting BMI is unusual for this input check; this is not a medical assessment.")
+        bmi_value = f"{bmi:.1f}"
+        bmi_label = bmi_category(bmi)
+
     st.markdown(
         f'<div class="bmi-strip"><div><span class="metric-label">LIVE BMI CALCULATION</span>'
-        f'<div class="bmi-number">{bmi:.1f} <small>kg/m²</small></div></div>'
-        f'<div class="bmi-category">{bmi_category(bmi)}</div></div>',
+        f'<div class="bmi-number">{bmi_value} <small>kg/m\u00b2</small></div></div>'
+        f'<div class="bmi-category">{bmi_label}</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -580,36 +623,42 @@ def page_assessment(data: pd.DataFrame | None) -> None:
     if st.button("Run prediction  →", type="primary", width="stretch"):
         st.session_state.last_prediction = None
         st.session_state.last_input = None
-        result_slot.markdown(
-            '<div class="result-panel result-calm result-loading">'
-            '<div class="result-loader" aria-label="Prediction in progress"></div>'
-            '<div class="result-kicker">ASSESSMENT IN PROGRESS</div>'
-            '<h2>Analysing the measurements</h2>'
-            '<p>Contacting the prediction service. This may take a moment if the cloud service is waking up.</p>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-        payload = make_payload(values)
-        st.session_state.last_input = values.copy()
-        started = time.perf_counter()
-        try:
-            response = requests.post(PREDICT_URL, json=payload, timeout=90)
-            st.session_state.api_ready = response.status_code == 200
-            duration = time.perf_counter() - started
+        validation_errors = validate_patient_values(values)
+        if validation_errors:
+            st.error("Prediction was not sent. Please correct these measurements:")
+            for error in validation_errors:
+                st.write(f"- {error}")
+        else:
+            result_slot.markdown(
+                '<div class="result-panel result-calm result-loading">'
+                '<div class="result-loader" aria-label="Prediction in progress"></div>'
+                '<div class="result-kicker">ASSESSMENT IN PROGRESS</div>'
+                '<h2>Analysing the measurements</h2>'
+                '<p>Contacting the prediction service. This may take a moment if the cloud service is waking up.</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+            payload = make_payload(values)
+            st.session_state.last_input = values.copy()
+            started = time.perf_counter()
             try:
-                body = response.json()
-            except ValueError:
-                body = {"raw": response.text[:2000]}
-            st.session_state.last_prediction = {
-                "http_status": response.status_code,
-                "duration": duration,
-                "request": payload,
-                "response": body,
-                "created_at": datetime.now().isoformat(timespec="seconds"),
-            }
-        except requests.RequestException as exc:
-            st.session_state.last_prediction = {"error": str(exc), "request": payload}
-        st.rerun()
+                response = requests.post(PREDICT_URL, json=payload, timeout=90)
+                st.session_state.api_ready = response.status_code == 200
+                duration = time.perf_counter() - started
+                try:
+                    body = response.json()
+                except ValueError:
+                    body = {"raw": response.text[:2000]}
+                st.session_state.last_prediction = {
+                    "http_status": response.status_code,
+                    "duration": duration,
+                    "request": payload,
+                    "response": body,
+                    "created_at": datetime.now().isoformat(timespec="seconds"),
+                }
+            except requests.RequestException as exc:
+                st.session_state.last_prediction = {"error": str(exc), "request": payload}
+            st.rerun()
 
     if not st.session_state.api_ready:
         st.info("You can submit directly. The first request may take longer while the cloud API wakes up.")
