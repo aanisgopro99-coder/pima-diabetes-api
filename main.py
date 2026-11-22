@@ -14,10 +14,10 @@ app=FastAPI()
 
 class PatientData(BaseModel):
     Pregnancies: int = Field(ge=0, le=20, strict=True)
-    Glucose: float = Field(ge=0, le=400, strict=True)
+    Glucose: float = Field(gt=0, le=400, strict=True)
     BloodPressure: float = Field(gt=0, le=200, strict=True)
-    SkinThickness: float = Field(ge=0, le=100, strict=True)
-    Insulin: float = Field(ge=0, le=1000, strict=True)
+    SkinThickness: float = Field(gt=0, le=100, strict=True)
+    Insulin: float = Field(gt=0, le=1000, strict=True)
     Age: int = Field(ge=1, le=119, strict=True)
     Waight: float = Field(gt=30, lt=250, strict=True)
     Hight: float = Field(gt=60, lt=250, strict=True)
