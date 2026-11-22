@@ -50,7 +50,6 @@ def predict(data: PatientData):
             "data_ready":complete_dict,
             "prediction_status:":"ready for prediction",
             "features_status:":"features ready!",
-            "features":df.to_dict(orient="records"),
             "prediction_status":"ready",
             "prediction":prediction
 
