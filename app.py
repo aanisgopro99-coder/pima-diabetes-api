@@ -457,6 +457,8 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         pedigree = st.number_input("Diabetes pedigree function", min_value=0.0, max_value=3.0, value=0.5, step=0.01, help="Family-history-related dataset score.", key="in_pedigree")
 
     bmi = compute_bmi(weight, height)
+    if bmi < 12 or bmi > 60:
+        st.warning("Please double-check the entered height and weight units. The resulting BMI is unusual for this input check; this is not a medical assessment.")
     st.markdown(
         f'<div class="bmi-strip"><div><span class="metric-label">LIVE BMI CALCULATION</span>'
         f'<div class="bmi-number">{bmi:.1f} <small>kg/mÂ²</small></div></div>'
@@ -476,7 +478,7 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         "pedigree": pedigree,
     }
     result_slot = st.empty()
-    if st.button("Run prediction  â†’", type="primary", use_container_width=True, disabled=not st.session_state.api_ready):
+    if st.button("Run prediction  â†’", type="primary", use_container_width=True):
         result_slot.markdown(
             '<div class="result-panel result-calm result-loading">'
             '<div class="result-loader" aria-label="Prediction in progress"></div>'
@@ -491,6 +493,7 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         started = time.perf_counter()
         try:
             response = requests.post(PREDICT_URL, json=payload, timeout=90)
+            st.session_state.api_ready = response.status_code == 200
             duration = time.perf_counter() - started
             try:
                 body = response.json()
@@ -508,7 +511,7 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         st.rerun()
 
     if not st.session_state.api_ready:
-        st.info("Wake or check the API before running a prediction. The button will become available once the health endpoint responds.")
+        st.info("You can submit directly. The first request may take longer while the cloud API wakes up.")
     render_prediction_result(data)
 
 
