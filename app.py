@@ -408,8 +408,30 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
         st.json(body)
 
 
+def navigate_to(page: str) -> None:
+    st.session_state.nav_page = page
+
+
 def go_to_assessment() -> None:
-    st.session_state.nav_page = "Assessment"
+    navigate_to("Assessment")
+
+
+def render_mobile_navigation() -> None:
+    pages = ["Dashboard", "Assessment", "API monitor", "Model insights", "Project"]
+    current_page = st.session_state.nav_page
+
+    with st.container(key="mobile_navigation"):
+        with st.popover(f"☰  {current_page}", use_container_width=True):
+            st.caption("MOVE BETWEEN SECTIONS")
+            for page in pages:
+                st.button(
+                    page,
+                    key=f"mobile_nav_{page.lower().replace(' ', '_')}",
+                    type="primary" if page == current_page else "secondary",
+                    width="stretch",
+                    on_click=navigate_to,
+                    args=(page,),
+                )
 
 
 def page_dashboard(data: pd.DataFrame | None) -> None:
@@ -792,6 +814,7 @@ def main() -> None:
     init_state()
     load_css()
     render_cursor_effect()
+    render_mobile_navigation()
 
     with st.sidebar:
         st.markdown('<div class="brand-mark">P<span>.</span></div><div class="brand-name">PIMA <small>HEALTH INTELLIGENCE</small></div>', unsafe_allow_html=True)
