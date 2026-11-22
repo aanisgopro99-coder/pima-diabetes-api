@@ -9,3 +9,4 @@ joblib
 pydantic
 streamlit
 requests
+plotly==7.1.0
