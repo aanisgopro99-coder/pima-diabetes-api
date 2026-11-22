@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import os
@@ -35,15 +35,15 @@ FEATURES = [
     ("Glucose", "Glucose", "mg/dL", "Plasma glucose concentration from the glucose tolerance test."),
     ("BloodPressure", "Diastolic blood pressure", "mmHg", "Diastolic blood pressure measurement."),
     ("SkinThickness", "Triceps skin thickness", "mm", "Triceps skinfold thickness."),
-    ("Insulin", "Two-hour serum insulin", "µU/mL", "Two-hour serum insulin measurement."),
-    ("BMI", "Body mass index", "kg/m²", "Calculated by the API from weight and height."),
+    ("Insulin", "Two-hour serum insulin", "ÂµU/mL", "Two-hour serum insulin measurement."),
+    ("BMI", "Body mass index", "kg/mÂ²", "Calculated by the API from weight and height."),
     ("DiabetesPedigreeFunction", "Diabetes pedigree function", "score", "Dataset-specific score related to family history."),
     ("Age", "Age", "years", "Age in years."),
 ]
 
 st.set_page_config(
     page_title="Pima | Health Intelligence",
-    page_icon="✳",
+    page_icon="âœ³",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -107,7 +107,7 @@ def load_dataset() -> pd.DataFrame | None:
         return None
     data = pd.read_csv(path)
     if "Outcome" in data.columns:
-        data["Outcome label"] = data["Outcome"].map({0: "Class 0", 1: "Class 1"})
+        data["Outcome label"] = data["Outcome"].map({0: "No diabetes recorded", 1: "Diabetes recorded"})
     return data
 
 
@@ -158,7 +158,7 @@ def style_figure(fig, height: int = 330):
         font={"family": "DM Sans, sans-serif", "color": PALETTE["cream"], "size": 12},
         margin={"l": 12, "r": 12, "t": 28, "b": 12},
         height=height,
-        transition={"duration": 550, "easing": "cubic-in-out"},
+        transition={"duration": 0},
         hoverlabel={"bgcolor": "#1B3427", "bordercolor": "#536B50", "font": {"color": "#F4F0E6"}},
         legend={"bgcolor": "rgba(0,0,0,0)", "font": {"color": PALETTE["muted"]}},
     )
@@ -188,7 +188,7 @@ def render_hero() -> None:
     st.markdown(
         """
         <section class="hero">
-          <div class="hero-topline"><span class="eyebrow">PIMA INDIANS DIABETES · MACHINE LEARNING</span><span class="live-tag"><i></i> HEALTH INTELLIGENCE</span></div>
+          <div class="hero-topline"><span class="eyebrow">PIMA INDIANS DIABETES Â· MACHINE LEARNING</span><span class="live-tag"><i></i> HEALTH INTELLIGENCE</span></div>
           <h1>See the signals.<br><em>Understand the model.</em></h1>
           <p class="hero-copy">A focused workspace connecting clinical measurements, a trained classifier and a live prediction API.</p>
           <svg class="ecg" viewBox="0 0 1200 78" preserveAspectRatio="none" aria-hidden="true">
@@ -212,7 +212,7 @@ def api_status_label() -> tuple[str, str]:
 
 def run_health_check(key: str) -> None:
     if st.button("Wake / check API", key=key, use_container_width=True):
-        with st.spinner("Contacting the cloud API. Render may need time to wake the service…"):
+        with st.spinner("Contacting the cloud API. Render may need time to wake the serviceâ€¦"):
             try:
                 code, body, elapsed = request_health()
                 st.session_state.last_health = {
@@ -248,34 +248,44 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
 
     body = result.get("response") or {}
     if result.get("http_status") != 200 or "prediction" not in body:
-        st.error(f"API returned HTTP {result.get('http_status', '—')}.")
+        st.error(f"API returned HTTP {result.get('http_status', 'â€”')}.")
         st.json(body)
         return
 
     prediction = int(body["prediction"])
     bmi = body.get("data_ready", {}).get("BMI")
+    probability = body.get("model_probability")
+    if probability is None:
+        st.warning("The connected API version does not yet return the model probability. The API update must be deployed before a percentage can be displayed.")
+        return
+    probability = max(0.0, min(float(probability), 1.0))
+    percentage = probability * 100
     positive = prediction == 1
     tone = "result-alert" if positive else "result-calm"
-    title = "Positive model class" if positive else "Negative model class"
+    title = "High model-estimated diabetes probability" if positive else "Low model-estimated diabetes probability"
     copy = (
-        "The model assigned this input to class 1 using its configured decision threshold. "
-        "This is an educational model output, not a diagnosis."
+        f"The model assigned a {percentage:.1f}% probability score to the diabetes-labelled class. "
+        "Its saved decision threshold places this result in the higher group. This does not confirm diabetes."
         if positive
-        else "The model assigned this input to class 0 using its configured decision threshold. "
-        "This result does not rule out diabetes and is not a diagnosis."
+        else f"The model assigned a {percentage:.1f}% probability score to the diabetes-labelled class. "
+        "Its saved decision threshold places this result in the lower group. This does not rule out diabetes."
     )
     st.markdown(
-        f'<div class="result-panel {tone}"><div class="result-kicker">MODEL OUTPUT · CLASS {prediction}</div>'
-        f'<h2>{title}</h2><p>{copy}</p><div class="result-footer">'
-        f'<span>HTTP {result["http_status"]}</span><span>{result["duration"]:.2f} s response</span>'
-        f'<span>{f"BMI {float(bmi):.1f}" if bmi is not None else "BMI unavailable"}</span></div></div>',
+        f'<div class="result-panel {tone}"><div class="result-kicker">MODEL-ESTIMATED PROBABILITY</div>'
+        f'<h2>{title}</h2><div class="probability-value">{percentage:.1f}%</div>'
+        f'<div class="probability-track"><span style="width:{percentage:.1f}%"></span></div>'
+        f'<p>{copy}</p><div class="result-footer">'
+        f'<span>{result["duration"]:.2f} s response</span>'
+        f'<span>{f"BMI {float(bmi):.1f}" if bmi is not None else "BMI unavailable"}</span>'
+        f'<span>Not a diagnosis</span></div></div>',
         unsafe_allow_html=True,
     )
+    st.caption("Important: this percentage is the model's predict_proba score, not a clinically validated personal risk. Its calibration and accuracy for an individual have not been established. Do not use it to diagnose, rule out diabetes or make treatment decisions.")
 
     if bmi is not None:
         st.markdown(
             f'<div class="bmi-strip"><div><span class="metric-label">BMI CALCULATED BY THE API</span>'
-            f'<div class="bmi-number">{float(bmi):.1f} <small>kg/m²</small></div></div>'
+            f'<div class="bmi-number">{float(bmi):.1f} <small>kg/mÂ²</small></div></div>'
             f'<div class="bmi-category">{bmi_category(float(bmi))}</div></div>',
             unsafe_allow_html=True,
         )
@@ -309,7 +319,7 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
             st.caption("Descriptive comparison only. These percentiles are not risk scores, feature contributions or clinical reference ranges.")
 
     with st.expander("Technical request and response"):
-        st.markdown("**POST /predict — request JSON**")
+        st.markdown("**POST /predict â€” request JSON**")
         st.json(result.get("request", {}))
         st.markdown("**API response JSON**")
         st.json(body)
@@ -326,19 +336,19 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
 
     api_text, api_tone = api_status_label()
     last = st.session_state.get("last_prediction") or {}
-    last_time = f'{last.get("duration", 0):.2f} s' if "duration" in last else "—"
-    prediction_text = "—"
+    last_time = f'{last.get("duration", 0):.2f} s' if "duration" in last else "â€”"
+    prediction_text = "â€”"
     if isinstance(last.get("response"), dict) and "prediction" in last["response"]:
-        prediction_text = f'Class {int(last["response"]["prediction"])}'
+        prediction_text = "High model estimate" if int(last["response"]["prediction"]) == 1 else "Low model estimate"
 
     st.markdown('<div class="section-heading"><span>LIVE OVERVIEW</span> Workspace pulse</div>', unsafe_allow_html=True)
     k1, k2, k3, k4 = st.columns(4, gap="medium")
     with k1:
-        metric_card("DATASET RECORDS", f"{records:,}" if records else "—", "Clean project dataset", "sage")
+        metric_card("DATASET RECORDS", f"{records:,}" if records else "â€”", "Clean project dataset", "sage")
     with k2:
         metric_card("MODEL FEATURES", "08", "BMI is calculated from 2 extra inputs", "walnut")
     with k3:
-        metric_card("CLASS 1 IN DATASET", f"{positive_rate:.1f}%" if records else "—", "Dataset share · not population prevalence", "rose")
+        metric_card("DIABETES RECORDED", f"{positive_rate:.1f}%" if records else "â€”", "Dataset share Â· not population prevalence", "rose")
     with k4:
         metric_card("API CONNECTION", api_text, "Last health check in this session", "sage" if api_tone == "good" else "walnut")
 
@@ -349,12 +359,12 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             counts = data["Outcome"].value_counts().sort_index()
             fig = go.Figure(
                 go.Pie(
-                    labels=[f"Class {int(x)}" for x in counts.index],
+                    labels=["No diabetes recorded" if int(x) == 0 else "Diabetes recorded" for x in counts.index],
                     values=counts.values,
                     hole=0.72,
                     marker={"colors": [PALETTE["negative"], PALETTE["positive"]], "line": {"color": PALETTE["forest"], "width": 4}},
                     textinfo="label+percent",
-                    hovertemplate="%{label}<br>%{value} records · %{percent}<extra></extra>",
+                    hovertemplate="%{label}<br>%{value} records Â· %{percent}<extra></extra>",
                 )
             )
             fig.update_layout(showlegend=False, annotations=[{"text": f"{records}<br><span style='font-size:11px'>records</span>", "showarrow": False, "font": {"size": 23, "color": PALETTE["cream"]}}])
@@ -362,7 +372,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             st.plotly_chart(style_figure(fig, 310), use_container_width=True, config={"displayModeBar": False, "responsive": True})
             st.markdown('</div>', unsafe_allow_html=True)
         with right:
-            color_map = {"Class 0": PALETTE["negative"], "Class 1": PALETTE["sage_light"]}
+            color_map = {"No diabetes recorded": PALETTE["negative"], "Diabetes recorded": PALETTE["sage_light"]}
             fig = px.scatter(
                 data,
                 x="Glucose",
@@ -371,10 +381,10 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
                 color_discrete_map=color_map,
                 hover_data=["Age", "Pregnancies"],
                 opacity=0.68,
-                labels={"Outcome label": "Dataset class", "Glucose": "Glucose (mg/dL)", "BMI": "BMI (kg/m²)"},
+                labels={"Outcome label": "Recorded dataset group", "Glucose": "Glucose (mg/dL)", "BMI": "BMI (kg/mÂ²)"},
             )
             fig.update_traces(marker={"size": 8, "line": {"width": 0}})
-            st.markdown('<div class="chart-card"><div class="chart-heading">Glucose × BMI map</div><div class="chart-subtitle">Explore individual dataset records · hover for details</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-card"><div class="chart-heading">Glucose Ã— BMI map</div><div class="chart-subtitle">Explore individual dataset records Â· hover for details</div>', unsafe_allow_html=True)
             st.plotly_chart(style_figure(fig, 310), use_container_width=True, config={"displayModeBar": False, "responsive": True})
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -393,7 +403,7 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
             nbins=32,
             barmode="overlay",
             opacity=0.72,
-            labels={"Outcome label": "Dataset class"},
+            labels={"Outcome label": "Recorded dataset group"},
         )
         fig.update_layout(xaxis_title=feature, yaxis_title="Records", bargap=0.04)
         st.plotly_chart(style_figure(fig, 300), use_container_width=True, config={"displayModeBar": False, "responsive": True})
@@ -401,16 +411,16 @@ def page_dashboard(data: pd.DataFrame | None) -> None:
     st.markdown('<div class="section-heading"><span>03</span> Recent activity</div>', unsafe_allow_html=True)
     activity_left, activity_right = st.columns([1.2, 1], gap="large")
     with activity_left:
-        if prediction_text == "—":
-            st.markdown('<div class="activity-card"><div class="activity-icon">✳</div><div><strong>No prediction in this session yet</strong><p>Open the assessment workspace to submit a test profile.</p></div></div>', unsafe_allow_html=True)
+        if prediction_text == "â€”":
+            st.markdown('<div class="activity-card"><div class="activity-icon">âœ³</div><div><strong>No prediction in this session yet</strong><p>Open the assessment workspace to submit a test profile.</p></div></div>', unsafe_allow_html=True)
         else:
             st.markdown(
-                f'<div class="activity-card"><div class="activity-icon">↗</div><div><strong>Latest output · {prediction_text}</strong>'
+                f'<div class="activity-card"><div class="activity-icon">â†—</div><div><strong>Latest output Â· {prediction_text}</strong>'
                 f'<p>API response time: {last_time}. Session-only activity; no patient history is stored.</p></div></div>',
                 unsafe_allow_html=True,
             )
     with activity_right:
-        st.markdown('<div class="activity-card"><div class="activity-icon">⌁</div><div><strong>API monitor</strong><p>Health endpoint: GET /health. Prediction endpoint: POST /predict.</p></div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="activity-card"><div class="activity-icon">âŒ</div><div><strong>API monitor</strong><p>Health endpoint: GET /health. Prediction endpoint: POST /predict.</p></div></div>', unsafe_allow_html=True)
         run_health_check("dashboard_health_check")
     if st.button("Open assessment workspace", type="primary", use_container_width=True):
         st.session_state.nav_page = "Assessment"
@@ -426,7 +436,7 @@ def page_assessment(data: pd.DataFrame | None) -> None:
     status, tone = api_status_label()
     status_col, action_col = st.columns([2.5, 1])
     with status_col:
-        st.markdown(f'<div class="status-line"><span class="status-dot {tone}"></span> API status · <strong>{status}</strong></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="status-line"><span class="status-dot {tone}"></span> API status Â· <strong>{status}</strong></div>', unsafe_allow_html=True)
     with action_col:
         run_health_check("assessment_health_check")
 
@@ -434,22 +444,22 @@ def page_assessment(data: pd.DataFrame | None) -> None:
     st.caption("Nine request fields are collected. Weight and height are sent to the API, which calculates BMI for the eight-feature model input.")
     c1, c2, c3 = st.columns(3, gap="large")
     with c1:
-        pregnancies = st.number_input("Pregnancies · count", min_value=0, max_value=20, value=0, step=1, help="Number of times pregnant.", key="in_pregnancies")
-        glucose = st.number_input("Glucose · mg/dL", min_value=0.0, max_value=400.0, value=120.0, step=1.0, help="Plasma glucose concentration.", key="in_glucose")
-        blood_pressure = st.number_input("Diastolic blood pressure · mmHg", min_value=1.0, max_value=200.0, value=70.0, step=1.0, help="The API requires a value greater than zero.", key="in_blood_pressure")
+        pregnancies = st.number_input("Pregnancies Â· count", min_value=0, max_value=20, value=0, step=1, help="Number of times pregnant.", key="in_pregnancies")
+        glucose = st.number_input("Glucose Â· mg/dL", min_value=0.0, max_value=400.0, value=120.0, step=1.0, help="Plasma glucose concentration.", key="in_glucose")
+        blood_pressure = st.number_input("Diastolic blood pressure Â· mmHg", min_value=1.0, max_value=200.0, value=70.0, step=1.0, help="The API requires a value greater than zero.", key="in_blood_pressure")
     with c2:
-        skin_thickness = st.number_input("Skin thickness · mm", min_value=0.0, max_value=100.0, value=20.0, step=1.0, help="Triceps skinfold thickness.", key="in_skin_thickness")
-        insulin = st.number_input("Insulin · µU/mL", min_value=0.0, max_value=1000.0, value=80.0, step=1.0, help="Two-hour serum insulin.", key="in_insulin")
-        age = st.number_input("Age · years", min_value=1, max_value=119, value=30, step=1, help="Age in years.", key="in_age")
+        skin_thickness = st.number_input("Skin thickness Â· mm", min_value=0.0, max_value=100.0, value=20.0, step=1.0, help="Triceps skinfold thickness.", key="in_skin_thickness")
+        insulin = st.number_input("Insulin Â· ÂµU/mL", min_value=0.0, max_value=1000.0, value=80.0, step=1.0, help="Two-hour serum insulin.", key="in_insulin")
+        age = st.number_input("Age Â· years", min_value=1, max_value=119, value=30, step=1, help="Age in years.", key="in_age")
     with c3:
-        weight = st.number_input("Weight · kg", min_value=30.1, max_value=249.9, value=70.0, step=0.5, help="API request field: Waight.", key="in_weight")
-        height = st.number_input("Height · cm", min_value=60.1, max_value=249.9, value=170.0, step=0.5, help="API request field: Hight.", key="in_height")
+        weight = st.number_input("Weight Â· kg", min_value=30.1, max_value=249.9, value=70.0, step=0.5, help="API request field: Waight.", key="in_weight")
+        height = st.number_input("Height Â· cm", min_value=60.1, max_value=249.9, value=170.0, step=0.5, help="API request field: Hight.", key="in_height")
         pedigree = st.number_input("Diabetes pedigree function", min_value=0.0, max_value=3.0, value=0.5, step=0.01, help="Family-history-related dataset score.", key="in_pedigree")
 
     bmi = compute_bmi(weight, height)
     st.markdown(
         f'<div class="bmi-strip"><div><span class="metric-label">LIVE BMI CALCULATION</span>'
-        f'<div class="bmi-number">{bmi:.1f} <small>kg/m²</small></div></div>'
+        f'<div class="bmi-number">{bmi:.1f} <small>kg/mÂ²</small></div></div>'
         f'<div class="bmi-category">{bmi_category(bmi)}</div></div>',
         unsafe_allow_html=True,
     )
@@ -465,27 +475,36 @@ def page_assessment(data: pd.DataFrame | None) -> None:
         "height": height,
         "pedigree": pedigree,
     }
-    if st.button("Run prediction  →", type="primary", use_container_width=True, disabled=not st.session_state.api_ready):
+    result_slot = st.empty()
+    if st.button("Run prediction  â†’", type="primary", use_container_width=True, disabled=not st.session_state.api_ready):
+        result_slot.markdown(
+            '<div class="result-panel result-calm result-loading">'
+            '<div class="result-loader" aria-label="Prediction in progress"></div>'
+            '<div class="result-kicker">ASSESSMENT IN PROGRESS</div>'
+            '<h2>Analysing the measurements</h2>'
+            '<p>Contacting the prediction service. This may take a moment if the cloud service is waking up.</p>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         payload = make_payload(values)
         st.session_state.last_input = values.copy()
         started = time.perf_counter()
-        with st.spinner("Sending measurements to the cloud model…"):
+        try:
+            response = requests.post(PREDICT_URL, json=payload, timeout=90)
+            duration = time.perf_counter() - started
             try:
-                response = requests.post(PREDICT_URL, json=payload, timeout=90)
-                duration = time.perf_counter() - started
-                try:
-                    body = response.json()
-                except ValueError:
-                    body = {"raw": response.text[:2000]}
-                st.session_state.last_prediction = {
-                    "http_status": response.status_code,
-                    "duration": duration,
-                    "request": payload,
-                    "response": body,
-                    "created_at": datetime.now().isoformat(timespec="seconds"),
-                }
-            except requests.RequestException as exc:
-                st.session_state.last_prediction = {"error": str(exc), "request": payload}
+                body = response.json()
+            except ValueError:
+                body = {"raw": response.text[:2000]}
+            st.session_state.last_prediction = {
+                "http_status": response.status_code,
+                "duration": duration,
+                "request": payload,
+                "response": body,
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+            }
+        except requests.RequestException as exc:
+            st.session_state.last_prediction = {"error": str(exc), "request": payload}
         st.rerun()
 
     if not st.session_state.api_ready:
@@ -499,19 +518,19 @@ def page_api_monitor() -> None:
     with left:
         st.markdown(
             f'<div class="endpoint-card"><div class="metric-label">HEALTH ENDPOINT</div>'
-            f'<code>{html.escape(HEALTH_URL)}</code><span class="endpoint-method">GET · SERVICE HEALTH</span></div>',
+            f'<code>{html.escape(HEALTH_URL)}</code><span class="endpoint-method">GET Â· SERVICE HEALTH</span></div>',
             unsafe_allow_html=True,
         )
         st.markdown(
             f'<div class="endpoint-card"><div class="metric-label">PREDICTION ENDPOINT</div>'
-            f'<code>{html.escape(PREDICT_URL)}</code><span class="endpoint-method">POST · JSON INPUT</span></div>',
+            f'<code>{html.escape(PREDICT_URL)}</code><span class="endpoint-method">POST Â· JSON INPUT</span></div>',
             unsafe_allow_html=True,
         )
         run_health_check("monitor_health_check")
     with right:
         health = st.session_state.get("last_health") or {}
-        code = str(health.get("http_status", "—"))
-        seconds = f'{health.get("seconds", 0):.2f} s' if "seconds" in health else "—"
+        code = str(health.get("http_status", "â€”"))
+        seconds = f'{health.get("seconds", 0):.2f} s' if "seconds" in health else "â€”"
         label, _ = api_status_label()
         st.markdown('<div class="monitor-card">', unsafe_allow_html=True)
         m1, m2 = st.columns(2)
@@ -529,8 +548,8 @@ def page_api_monitor() -> None:
         st.markdown('<div class="section-heading"><span>01</span> Latest prediction request</div>', unsafe_allow_html=True)
         a, b, c = st.columns(3)
         a.metric("HTTP response", str(last.get("http_status", "Error")))
-        b.metric("Request duration", f'{last.get("duration", 0):.2f} s' if "duration" in last else "—")
-        b.metric("Timestamp", last.get("created_at", "—"))
+        b.metric("Request duration", f'{last.get("duration", 0):.2f} s' if "duration" in last else "â€”")
+        b.metric("Timestamp", last.get("created_at", "â€”"))
         with st.expander("Request and response payloads"):
             st.markdown("**Request JSON**")
             st.json(last.get("request", {}))
@@ -542,7 +561,7 @@ def page_api_monitor() -> None:
 def page_model_insights(data: pd.DataFrame | None) -> None:
     render_header("MODEL DOCUMENTATION", "What the model evaluates", "Explore the eight model features and the dataset distributions behind this educational classifier.")
     st.markdown(
-        '<div class="notice"><strong>Input pipeline</strong><span>9 API request fields → BMI calculated from weight and height → 8 model features → class 0 or class 1.</span></div>',
+        '<div class="notice"><strong>Input pipeline</strong><span>9 API request fields â†’ BMI calculated from weight and height â†’ 8 model features â†’ model probability estimate.</span></div>',
         unsafe_allow_html=True,
     )
     for start in range(0, len(FEATURES), 2):
@@ -564,17 +583,17 @@ def page_model_insights(data: pd.DataFrame | None) -> None:
             x="Outcome label",
             y=feature,
             color="Outcome label",
-            color_discrete_map={"Class 0": PALETTE["negative"], "Class 1": PALETTE["sage_light"]},
+            color_discrete_map={"No diabetes recorded": PALETTE["negative"], "Diabetes recorded": PALETTE["sage_light"]},
             points="outliers",
-            labels={"Outcome label": "Dataset class"},
+            labels={"Outcome label": "Recorded dataset group"},
         )
         st.plotly_chart(style_figure(fig, 350), use_container_width=True, config={"displayModeBar": False, "responsive": True})
         st.caption("These plots describe the project dataset. They do not establish causation or explain an individual model prediction.")
     st.markdown('<div class="section-heading"><span>02</span> Decision threshold</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="feature-card"><h3>How class 0 and class 1 are selected</h3>'
-        '<p>The deployed model calculates a positive-class probability internally and compares it with its saved decision threshold. '
-        'The API returns the resulting class label, not the probability. The numeric threshold is not currently exposed by the API response.</p></div>',
+        '<div class="feature-card"><h3>How the probability estimate is used</h3>'
+        '<p>The API now returns the model probability score for the diabetes-labelled class. The saved decision threshold uses that score to select the higher or lower group. '
+        'This percentage is not clinically calibrated or validated as an individual medical risk estimate.</p></div>',
         unsafe_allow_html=True,
     )
     st.markdown('<div class="section-heading"><span>03</span> Request field mapping</div>', unsafe_allow_html=True)
@@ -598,7 +617,7 @@ def page_model_insights(data: pd.DataFrame | None) -> None:
 def page_project(data: pd.DataFrame | None) -> None:
     render_header("PROJECT PRESENTATION", "From measurements to prediction", "A clear walkthrough of the dataset, model pipeline and deployed application architecture.")
     st.markdown(
-        '<div class="overview-hero"><div class="eyebrow">MACHINE LEARNING · FASTAPI · STREAMLIT</div>'
+        '<div class="overview-hero"><div class="eyebrow">MACHINE LEARNING Â· FASTAPI Â· STREAMLIT</div>'
         '<h2>Turning structured measurements into a model output.</h2>'
         '<p>A private web interface connected to a separately deployed prediction API.</p></div>',
         unsafe_allow_html=True,
@@ -609,14 +628,14 @@ def page_project(data: pd.DataFrame | None) -> None:
         a.metric("Dataset records", f"{len(data):,}")
         b.metric("Model features", "8")
         c.metric("Request fields", "9")
-        st.write("The cleaned project dataset contains 768 records and the target column Outcome, with 500 class 0 records and 268 class 1 records.")
+        st.write("The cleaned project dataset contains 768 records: 500 with â€œNo diabetes recordedâ€ and 268 with â€œDiabetes recordedâ€. These are dataset labels, not clinical assessments.")
     st.markdown('<div class="section-heading"><span>02</span> System architecture</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="architecture"><div class="arch-node"><small>01 · USER</small><strong>Assessment form</strong><span>9 request fields</span></div>'
-        '<div class="arch-arrow">↓</div><div class="arch-node"><small>02 · FRONTEND</small><strong>Streamlit interface</strong><span>Validation · BMI preview · API request</span></div>'
-        '<div class="arch-arrow">↓</div><div class="arch-node arch-highlight"><small>03 · API</small><strong>FastAPI · POST /predict</strong><span>Input validation · BMI calculation · feature row</span></div>'
-        '<div class="arch-arrow">↓</div><div class="arch-node"><small>04 · MODEL</small><strong>Saved classifier</strong><span>8 features · saved decision threshold</span></div>'
-        '<div class="arch-arrow">↓</div><div class="arch-node arch-output"><small>05 · RESPONSE</small><strong>Class 0 / Class 1</strong><span>JSON response returned to the frontend</span></div></div>',
+        '<div class="architecture"><div class="arch-node"><small>01 Â· USER</small><strong>Assessment form</strong><span>9 request fields</span></div>'
+        '<div class="arch-arrow">â†“</div><div class="arch-node"><small>02 Â· FRONTEND</small><strong>Streamlit interface</strong><span>Validation Â· BMI preview Â· API request</span></div>'
+        '<div class="arch-arrow">â†“</div><div class="arch-node arch-highlight"><small>03 Â· API</small><strong>FastAPI Â· POST /predict</strong><span>Input validation Â· BMI calculation Â· feature row</span></div>'
+        '<div class="arch-arrow">â†“</div><div class="arch-node"><small>04 Â· MODEL</small><strong>Saved classifier</strong><span>8 features Â· saved decision threshold</span></div>'
+        '<div class="arch-arrow">â†“</div><div class="arch-node arch-output"><small>05 Â· RESPONSE</small><strong>Probability estimate</strong><span>Readable model estimate returned to the frontend</span></div></div>',
         unsafe_allow_html=True,
     )
     st.markdown('<div class="section-heading"><span>03</span> Technology stack</div>', unsafe_allow_html=True)
@@ -654,7 +673,7 @@ def main() -> None:
         )
         st.markdown("---")
         state, tone = api_status_label()
-        st.markdown(f'<div class="sidebar-status"><span class="status-dot {tone}"></span><span>API · {state}</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sidebar-status"><span class="status-dot {tone}"></span><span>API Â· {state}</span></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sidebar-url">{html.escape(API_BASE_URL)}</div>', unsafe_allow_html=True)
         if st.button("Sign out", use_container_width=True):
             st.session_state.authenticated = False
@@ -673,7 +692,7 @@ def main() -> None:
     else:
         page_project(data)
 
-    st.markdown('<div class="app-footer">PIMA HEALTH INTELLIGENCE <span>·</span> EDUCATIONAL MACHINE-LEARNING PROJECT <span>·</span> NOT A MEDICAL DEVICE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="app-footer">PIMA HEALTH INTELLIGENCE <span>Â·</span> EDUCATIONAL MACHINE-LEARNING PROJECT <span>Â·</span> NOT A MEDICAL DEVICE</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

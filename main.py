@@ -51,7 +51,8 @@ def predict(data: PatientData):
             "prediction_status:":"ready for prediction",
             "features_status:":"features ready!",
             "prediction_status":"ready",
-            "prediction":prediction
+            "prediction":prediction,
+            "model_probability":float(probability)
 
         }   
     

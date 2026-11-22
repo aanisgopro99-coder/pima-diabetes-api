@@ -415,3 +415,15 @@ textarea::placeholder { color: #91A293 !important; -webkit-text-fill-color: #91A
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Probability result and in-panel loading state */
+.probability-value { color: var(--cream); font: 600 clamp(2.5rem, 5vw, 3.7rem)/1.05 'Playfair Display', Georgia, serif; margin: .65rem 0 .8rem; }
+.probability-track { height: 10px; width: 100%; max-width: 620px; background: rgba(218,228,214,.12); border-radius: 99px; overflow: hidden; margin: .4rem 0 1rem; }
+.probability-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #91A88D, #D0AD83); transition: width .35s ease-out; }
+.result-alert .probability-track span { background: linear-gradient(90deg, #B87968, #E0B08A); }
+.result-loading { text-align: center; }
+.result-loader { width: 58px; height: 58px; margin: .2rem auto 1.1rem; border-radius: 50%; border: 4px solid rgba(185,201,178,.15); border-top-color: #D0AD83; border-right-color: #91A88D; animation: pima-spin .9s linear infinite; }
+@keyframes pima-spin { to { transform: rotate(360deg); } }
+/* Keep chart rendering responsive and avoid heavy transition effects. */
+[data-testid="stPlotlyChart"] { contain: content; }
+@media (prefers-reduced-motion: reduce) { .result-loader { animation: none; } .probability-track span { transition: none; } }
