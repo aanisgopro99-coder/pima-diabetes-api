@@ -59,39 +59,8 @@ def load_css() -> None:
         st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
-def authenticate() -> None:
-    expected = os.getenv("APP_PASSWORD", "")
-    if not expected:
-        st.error("Access protection is not configured. Set APP_PASSWORD before launching the app.")
-        st.stop()
-    if st.session_state.get("authenticated"):
-        return
-
-    st.markdown(
-        """
-        <div class="login-shell">
-          <div class="eyebrow">PRIVATE PROJECT ACCESS</div>
-          <div class="login-brand">Pima<span>.</span></div>
-          <h1 class="login-heading">Health intelligence,<br><em>made clearer.</em></h1>
-          <p class="login-copy">A private machine-learning project workspace for diabetes risk assessment.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    with st.form("login_form"):
-        password = st.text_input("Access password", type="password", placeholder="Enter your access password")
-        submitted = st.form_submit_button("Enter workspace", width="stretch")
-    if submitted:
-        if password == expected:
-            st.session_state.authenticated = True
-            st.rerun()
-        st.error("Incorrect password.")
-    st.stop()
-
-
 def init_state() -> None:
     defaults = {
-        "authenticated": False,
         "nav_page": "Dashboard",
         "api_ready": False,
         "last_health": None,
@@ -809,13 +778,11 @@ def page_project(data: pd.DataFrame | None) -> None:
         'A class result must not be used to diagnose, treat or rule out diabetes. Consult a qualified healthcare professional for medical decisions.</span></div>',
         unsafe_allow_html=True,
     )
-    st.caption("The frontend password restricts access to this interface. It does not, by itself, secure the separately deployed public API.")
 
 
 def main() -> None:
     init_state()
     load_css()
-    authenticate()
     render_cursor_effect()
 
     with st.sidebar:
@@ -831,10 +798,6 @@ def main() -> None:
         state, tone = api_status_label()
         st.markdown(f'<div class="sidebar-status"><span class="status-dot {tone}"></span><span>API · {state}</span></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sidebar-url">{html.escape(API_BASE_URL)}</div>', unsafe_allow_html=True)
-        if st.button("Sign out", width="stretch"):
-            st.session_state.authenticated = False
-            st.rerun()
-
     render_live_clock()
     data = load_dataset()
     page = st.session_state.nav_page
