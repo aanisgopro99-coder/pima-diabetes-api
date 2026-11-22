@@ -13,16 +13,16 @@ threshold = joblib.load(BASE_DIR / "models" / "threshold.joblib")
 app=FastAPI()
 
 class PatientData(BaseModel):
-    Pregnancies:int
-    Glucose:float 
-    BloodPressure:float = Field(gt=0)
-    SkinThickness:float
-    Insulin:float 
-    Age:int=Field(gt=0,lt=120) 
-    Waight:float=Field(gt=30,lt=250)
-    Hight:float=Field(gt=60,lt=250)
-    DiabetesPedigreeFunction:float
-    model_config=ConfigDict(extra='forbid')
+    Pregnancies: int = Field(ge=0, le=20, strict=True)
+    Glucose: float = Field(ge=0, le=400, strict=True)
+    BloodPressure: float = Field(gt=0, le=200, strict=True)
+    SkinThickness: float = Field(ge=0, le=100, strict=True)
+    Insulin: float = Field(ge=0, le=1000, strict=True)
+    Age: int = Field(ge=1, le=119, strict=True)
+    Waight: float = Field(gt=30, lt=250, strict=True)
+    Hight: float = Field(gt=60, lt=250, strict=True)
+    DiabetesPedigreeFunction: float = Field(ge=0, le=3, strict=True)
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
 
@@ -52,7 +52,8 @@ def predict(data: PatientData):
             "features_status:":"features ready!",
             "prediction_status":"ready",
             "prediction":prediction,
-            "model_probability":float(probability)
+            "model_probability":float(probability),
+            "decision_threshold":float(threshold)
 
         }   
     

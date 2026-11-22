@@ -314,34 +314,57 @@ def render_prediction_result(data: pd.DataFrame | None) -> None:
 
     body = result.get("response") or {}
     if result.get("http_status") != 200 or "prediction" not in body:
-        st.error(f"API returned HTTP {result.get('http_status', '—')}.")
-        st.json(body)
+        if result.get("http_status") == 422:
+            st.error("The API rejected the submitted measurements. Please review these fields:")
+            details = body.get("detail", [])
+            if isinstance(details, list):
+                for item in details:
+                    field = ".".join(str(part) for part in item.get("loc", []) if part != "body")
+                    message = item.get("msg", "Invalid value")
+                    st.write(f"- **{field or 'Request'}:** {message}")
+            else:
+                st.write(details)
+        else:
+            st.error(f"API returned HTTP {result.get('http_status', '—')}.")
+            st.json(body)
         return
 
-    prediction = int(body["prediction"])
     bmi = body.get("data_ready", {}).get("BMI")
     probability = body.get("model_probability")
-    if probability is None:
-        st.warning("The connected API version does not yet return the model probability. The API update must be deployed before a percentage can be displayed.")
+    api_threshold = body.get("decision_threshold")
+    if probability is None or api_threshold is None:
+        st.warning("The connected API must be redeployed with the probability and decision-threshold response fields before the adjustable result can be used.")
         return
     probability = max(0.0, min(float(probability), 1.0))
+    api_threshold = max(0.0, min(float(api_threshold), 1.0))
+    selected_threshold = st.slider(
+        "Decision threshold",
+        min_value=0.0,
+        max_value=1.0,
+        value=api_threshold,
+        step=0.01,
+        format="%.2f",
+        key="decision_threshold_control",
+        help="Move the threshold to change how the same model probability is classified. This does not rerun or retrain the model.",
+    )
+    prediction = int(probability >= selected_threshold)
     percentage = probability * 100
+    threshold_percentage = selected_threshold * 100
     positive = prediction == 1
     tone = "result-alert" if positive else "result-calm"
-    title = "High model-estimated diabetes probability" if positive else "Low model-estimated diabetes probability"
+    title = "Has diabetes" if positive else "Does not have diabetes"
     copy = (
-        f"The model assigned a {percentage:.1f}% probability score to the diabetes-labelled class. "
-        "Its saved decision threshold places this result in the higher group. This does not confirm diabetes."
+        f"The model probability ({percentage:.1f}%) is at or above the selected threshold ({threshold_percentage:.0f}%). This is a model classification, not a medical diagnosis."
         if positive
-        else f"The model assigned a {percentage:.1f}% probability score to the diabetes-labelled class. "
-        "Its saved decision threshold places this result in the lower group. This does not rule out diabetes."
+        else f"The model probability ({percentage:.1f}%) is below the selected threshold ({threshold_percentage:.0f}%). This result does not rule out diabetes."
     )
     st.markdown(
         f'<div class="result-panel {tone}"><div class="result-kicker">MODEL-ESTIMATED PROBABILITY</div>'
         f'<h2>{title}</h2><div class="probability-value">{percentage:.1f}%</div>'
         f'<div class="probability-track"><span style="width:{percentage:.1f}%"></span></div>'
         f'<p>{copy}</p><div class="result-footer">'
-        f'<span>{result["duration"]:.2f} s response</span>'
+        f'<span>Probability {percentage:.1f}%</span>'
+        f'<span>Threshold {threshold_percentage:.0f}%</span>'
         f'<span>{f"BMI {float(bmi):.1f}" if bmi is not None else "BMI unavailable"}</span>'
         f'<span>Not a diagnosis</span></div></div>',
         unsafe_allow_html=True,
@@ -555,6 +578,8 @@ def page_assessment(data: pd.DataFrame | None) -> None:
     }
     result_slot = st.empty()
     if st.button("Run prediction  →", type="primary", width="stretch"):
+        st.session_state.last_prediction = None
+        st.session_state.last_input = None
         result_slot.markdown(
             '<div class="result-panel result-calm result-loading">'
             '<div class="result-loader" aria-label="Prediction in progress"></div>'
